@@ -104,7 +104,7 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-# Listener Rule for /get-response
+# Listener Rule for /get-data
 resource "aws_lb_listener_rule" "get_rule" {
   listener_arn = aws_lb_listener.http.arn
   priority     = 10
@@ -116,12 +116,12 @@ resource "aws_lb_listener_rule" "get_rule" {
 
   condition {
     path_pattern {
-      values = ["/get-response"]
+      values = ["/get-data"]
     }
   }
 }
 
-# Listener Rule for /post-response
+# Listener Rule for /post-data
 resource "aws_lb_listener_rule" "post_rule" {
   listener_arn = aws_lb_listener.http.arn
   priority     = 20
@@ -133,7 +133,7 @@ resource "aws_lb_listener_rule" "post_rule" {
 
   condition {
     path_pattern {
-      values = ["/post-response"]
+      values = ["/post-data"]
     }
   }
 }
@@ -145,10 +145,12 @@ resource "aws_lb_target_group" "lambda_tg" {
   vpc_id      = aws_vpc.main.id
 
   health_check {
-    enabled = true
-    path    = "/health"
+    enabled             = true
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 5
+    unhealthy_threshold = 2
   }
-  depends_on = [aws_lb.my_alb]
 }
 
 resource "aws_lb_target_group" "post_lambda_tg" {
