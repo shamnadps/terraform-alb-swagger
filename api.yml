@@ -1,0 +1,34 @@
+swagger: "2.0"
+info:
+  version: "1.0.0"
+  title: "My API"
+  description: "API definition"
+host: "example.com"
+schemes:
+  - "https"
+paths:
+  /mypostendpoint:
+    post:
+      summary: "My POST endpoint"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: "Request body"
+          required: true
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+      responses:
+        200:
+          description: "Successful response"
+          schema:
+            type: object
+            properties:
+              response:
+                type: string
