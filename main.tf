@@ -2,7 +2,7 @@ provider "aws" {
   region = "eu-north-1"
 }
 
-# Lambda function
+# Lambda function GET
 resource "aws_lambda_function" "my_lambda" {
   filename         = "lambda_function.zip"
   function_name    = "my_lambda_function"
@@ -10,6 +10,27 @@ resource "aws_lambda_function" "my_lambda" {
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.9"
   source_code_hash = filebase64sha256("lambda_function.zip")
+}
+
+# Lambda function for handling POST requests
+resource "aws_lambda_function" "post_lambda" {
+  filename         = "lambda_post_function.zip"  # Replace with your function ZIP file
+  function_name    = "post_lambda_function"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "lambda_post_function.lambda_handler"
+  runtime          = "python3.9"
+  source_code_hash = filebase64sha256("lambda_post_function.zip")
+}
+
+# Upload Lambda function package
+resource "null_resource" "package_post_lambda" {
+  provisioner "local-exec" {
+    command = "zip lambda_post_function.zip lambda_post_function.py"
+  }
+
+  triggers = {
+    source = filesha256("lambda_post_function.py")
+  }
 }
 
 # IAM Role for Lambda
@@ -74,8 +95,46 @@ resource "aws_lb_listener" "http" {
   protocol          = "HTTP"
 
   default_action {
+    type             = "fixed-response"
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "Default action"
+      status_code  = "404"
+    }
+  }
+}
+
+# Listener Rule for /get-response
+resource "aws_lb_listener_rule" "get_rule" {
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 10
+
+  action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.lambda_tg.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/get-response"]
+    }
+  }
+}
+
+# Listener Rule for /post-response
+resource "aws_lb_listener_rule" "post_rule" {
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 20
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.post_lambda_tg.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/post-response"]
+    }
   }
 }
 
@@ -94,10 +153,30 @@ resource "aws_lb_target_group" "lambda_tg" {
   }
 }
 
+resource "aws_lb_target_group" "post_lambda_tg" {
+  name        = "post-lambda-tg"
+  target_type = "lambda"
+  vpc_id      = aws_vpc.main.id
+
+  health_check {
+    enabled             = true
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 5
+    unhealthy_threshold = 2
+  }
+}
+
 # Attach Lambda to Target Group
 resource "aws_lb_target_group_attachment" "lambda_attachment" {
   target_group_arn = aws_lb_target_group.lambda_tg.arn
   target_id        = aws_lambda_function.my_lambda.arn
+}
+
+# Attach POST Lambda to Target Group
+resource "aws_lb_target_group_attachment" "post_lambda_attachment" {
+  target_group_arn = aws_lb_target_group.post_lambda_tg.arn
+  target_id        = aws_lambda_function.post_lambda.arn
 }
 
 # Security Group for ALB
@@ -163,4 +242,13 @@ resource "aws_lambda_permission" "allow_alb" {
   function_name = aws_lambda_function.my_lambda.function_name
   principal     = "elasticloadbalancing.amazonaws.com"
   source_arn    = aws_lb_target_group.lambda_tg.arn
+}
+
+# Lambda Permission for ALB to invoke POST Lambda function
+resource "aws_lambda_permission" "allow_alb_post" {
+  statement_id  = "AllowExecutionFromALBPost"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.post_lambda.function_name
+  principal     = "elasticloadbalancing.amazonaws.com"
+  source_arn    = aws_lb_target_group.post_lambda_tg.arn
 }
