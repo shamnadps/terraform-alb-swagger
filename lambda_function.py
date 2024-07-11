@@ -1,9 +1,9 @@
 def lambda_handler(event, context):
-    message = event['body']['message']
     response = {
-        "statusCode": 200,
-        "body": {
-            "response": f"Received: {message}"
-        }
+        'statusCode': 200,
+        'headers': {
+            'Content-Type': 'text/plain'  # Adjust content type as needed
+        },
+        'body': 'Hello from Lambda for Python!'
     }
     return response
