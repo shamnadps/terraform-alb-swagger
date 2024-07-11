@@ -8,7 +8,7 @@ resource "aws_lambda_function" "my_lambda" {
   function_name    = "my_lambda_function"
   role             = aws_iam_role.lambda_role.arn
   handler          = "lambda_function.lambda_handler"
-  runtime          = "python3.8"
+  runtime          = "python3.9"
   source_code_hash = filebase64sha256("lambda_function.zip")
 }
 
@@ -111,7 +111,7 @@ resource "aws_subnet" "subnet" {
   count                   = 2
   vpc_id                  = aws_vpc.main.id
   cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index)
-  availability_zone       = element(["us-east-1a", "us-east-1b"], count.index)
+  availability_zone       = element(["eu-north-1a", "eu-north-1b"], count.index)
   map_public_ip_on_launch = true
 }
 
