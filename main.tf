@@ -36,6 +36,30 @@ resource "aws_iam_role_policy_attachment" "lambda_policy_attachment" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+# Internet Gateway
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main.id
+}
+
+
+
+# Route Table
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+}
+
+# Route Table Associations
+resource "aws_route_table_association" "public" {
+  count      = 2
+  subnet_id  = element(aws_subnet.subnet[*].id, count.index)
+  route_table_id = aws_route_table.public.id
+}
+
 # ALB
 resource "aws_lb" "my_alb" {
   name               = "my-alb"
@@ -51,7 +75,7 @@ resource "aws_lb_listener" "https" {
   port              = "443"
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-2016-08"
-  certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/your-certificate-id"
+  certificate_arn   = "arn:aws:acm:eu-north-1:123456789012:certificate/your-certificate-id"
 
   default_action {
     type             = "forward"
