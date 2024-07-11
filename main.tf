@@ -145,12 +145,10 @@ resource "aws_lb_target_group" "lambda_tg" {
   vpc_id      = aws_vpc.main.id
 
   health_check {
-    enabled             = true
-    interval            = 30
-    timeout             = 5
-    healthy_threshold   = 5
-    unhealthy_threshold = 2
+    enabled = true
+    path    = "/health"
   }
+  depends_on = [aws_lb.my_alb]
 }
 
 resource "aws_lb_target_group" "post_lambda_tg" {
