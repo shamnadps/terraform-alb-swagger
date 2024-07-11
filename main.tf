@@ -41,8 +41,6 @@ resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
 }
 
-
-
 # Route Table
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
@@ -60,6 +58,22 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+# ACM Self-signed Certificate
+resource "aws_acm_certificate" "cert" {
+  domain_name       = "localhost"
+  validation_method = "DNS"
+  subject_alternative_names = ["*.localhost"]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_acm_certificate_validation" "cert_validation" {
+  certificate_arn         = aws_acm_certificate.cert.arn
+  validation_record_fqdns = aws_acm_certificate.cert.domain_validation_options[0].resource_record_value
+}
+
 # ALB
 resource "aws_lb" "my_alb" {
   name               = "my-alb"
@@ -67,6 +81,8 @@ resource "aws_lb" "my_alb" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb_sg.id]
   subnets            = aws_subnet.subnet[*].id
+
+  depends_on = [aws_acm_certificate_validation.cert_validation]
 }
 
 # ALB Listener
@@ -75,7 +91,7 @@ resource "aws_lb_listener" "https" {
   port              = "443"
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-2016-08"
-  certificate_arn   = "arn:aws:acm:eu-north-1:123456789012:certificate/your-certificate-id"
+  certificate_arn   = aws_acm_certificate.cert.arn
 
   default_action {
     type             = "forward"
